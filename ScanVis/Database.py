@@ -2,6 +2,7 @@ import os
 from os.path import join
 import numpy as np
 from .Scan import *
+from .Subject import *
 from .useful_stuff import user_decision
 
 class Database:
@@ -26,10 +27,9 @@ class Database:
     if input_patient_info is None:
       for file in self.files: self.patient_info[file] = [0, 'Unknown']
       return
-    
+    female = ['f', 'w', 'g', 'female', 'woman', 'girl']
+    male = ['m', 'b', 'male', 'man', 'boy']
     for key, val in input_patient_info.items():
-      female = ['f', 'w', 'g', 'female', 'woman', 'girl']
-      male = ['m', 'b', 'male', 'man', 'boy']
       if type(val) not in [list, np.ndarray]:
         print(f'Warning: item {key} in info dictionary is not a list')
         input_patient_info[key] = [0, 'Unknown']
@@ -47,10 +47,20 @@ class Database:
         print(f'Warning: No match in info dictionary for {file}')
         self.patient_info[file] = [0, 'Unknown']
 
-
-  def __call__(self, id):
+  def scan(self, id):
     options = [file for file in self.files if id in file]
     if len(options) == 0: raise Exception(f'No patient with that ID')
     elif len(options) == 1: file = options[0]
     else: file = user_decision(options)
     return Scan(scan_file = join(self.scan_folder, file), seg_file = join(self.seg_folder, file), age = self.patient_info[file][0], gender = self.patient_info[file][1])
+  
+  def subject(self, id):
+    options = [file for file in self.files if id in file]
+    if len(options) == 0: raise Exception(f'No patient with that ID')
+    elif len(options) == 1: file = options[0]
+    else: file = user_decision(options)
+    return Subject(seg_file = join(self.seg_folder, file), age = self.patient_info[file][0], gender = self.patient_info[file][1])
+  
+
+  def __call__(self, id):
+    self.scan(id)
