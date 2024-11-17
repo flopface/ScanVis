@@ -9,24 +9,9 @@ from skimage.transform import rotate
 from .useful_stuff import *
 
 class Scan:
-  def __init__(self, scan_file, seg_file = None, scan_folder = '/Users/work/Desktop/MPhys/popty-ping/scans', seg_folder = '/Users/work/Desktop/MPhys/popty-ping/segmentations', cmap = 'inferno'):
-    if '.mgz' not in scan_file and '.nii' not in scan_file:
-      options = [file for file in os.listdir(scan_folder) if scan_file in file]
-      if len(options) == 0: raise Exception(f'No patient with that ID')
-      elif len(options) == 1: scan_file = options[0]
-      else:
-        print('Available scans:', options)
-        scan_file = options[0]
-    if seg_file is None: seg_file = scan_file
-    elif '.mgz' not in scan_file and '.nii' not in scan_file:
-      options = [file for file in os.listdir(scan_folder) if scan_file in file]
-      if len(options) == 0: raise Exception(f'No patient with that ID')
-      elif len(options) == 1: scan_file = options[0]
-      else:
-        print('Available scans:', options)
-        scan_file = options[0]
-    self.scan_file = os.path.join(scan_folder, scan_file)
-    self.seg_file = os.path.join(seg_folder, seg_file)
+  def __init__(self, scan_file, seg_file, age = 0, gender = 'Unknown', cmap = 'inferno'):
+    self.scan_file = scan_file
+    self.seg_file = seg_file
     if not os.path.isfile(self.scan_file): raise Exception(f'Scan \'{self.scan_file}\' does not exist')
     if not os.path.isfile(self.seg_file): raise Exception(f'Segmentation \'{self.seg_file}\' does not exist')
     scan = sitk.ReadImage(self.scan_file)
@@ -34,8 +19,7 @@ class Scan:
     try: self.get_arrays(scan, seg)
     except: self.allign(scan, seg)
     self.id = os.path.split(self.scan_file)[1][:-4]
-    if self.id[:5] in patient_dict: self.age, self.gender = patient_dict[self.id[:5]]
-    else: self.age, self.gender = 0, 'U'
+    self.age, self.gender = age, gender
     self.spacing = scan.GetSpacing()
     self.direction = np.array(scan.GetDirection()).reshape(3, 3)
     self.origin = scan.GetOrigin()

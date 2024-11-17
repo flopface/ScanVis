@@ -48,3 +48,17 @@ def progress_word(current, total, word = 'lets just say, hehe, my peenitz'):
   length = len(word)
   progress = int(current / total * length // 1)
   print('\r|' + word[:progress] + ' '*int(length-progress), end = f'| {100*current/total:.2f}%')
+
+def user_decision(options):
+  print('Choose one of the options below')
+  index_column_width = len(str(len(options)))
+  for i, op in enumerate(options):
+    index = str(i+1)
+    index = ' '*(index_column_width-len(index)) + index
+    print(f'{index} | {op}')
+
+  ans = input()
+  while(True):
+    if ans in options: return ans
+    elif ans.isdigit() and (int(ans) > 0) and (int(ans) <= len(options)): return options[int(ans)-1]
+    else: ans = input(f'Input must be between 1 and {len(options)}')
