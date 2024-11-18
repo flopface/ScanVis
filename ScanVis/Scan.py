@@ -24,29 +24,27 @@ class Scan:
     self.direction = np.array(scan.GetDirection()).reshape(3, 3)
     self.origin = scan.GetOrigin()
     self.voxel_volume = self.spacing[0]*self.spacing[1]*self.spacing[2]
-    self.shape = self.scan_array.shape
-    self.volume = np.sum(self.mask_array.astype(int)) * self.voxel_volume
+    self.volume = np.sum(self.arrays['mask']) * self.voxel_volume
     self.cmap = cmap
 
   def allign(self, scan, seg):
     resample = sitk.ResampleImageFilter()
-    resample.SetReferenceImage(scan)  # Use the MRI scan as the reference
-    resample.SetInterpolator(sitk.sitkNearestNeighbor)  # Nearest neighbor for segmentation
-    seg = resample.Execute(seg)  # Resample the segmentation
-    self.get_arrays()
+    resample.SetReferenceImage(scan)
+    resample.SetInterpolator(sitk.sitkNearestNeighbor)
+    seg = resample.Execute(seg)
+    self.get_arrays(scan, seg)
 
   def get_arrays(self, scan, seg):
-    self.scan_array = sitk.GetArrayFromImage(scan)
-    self.seg_array = sitk.GetArrayFromImage(seg)
-    self.shifted_seg_array = self.seg_array + 15*(self.seg_array.astype(bool).astype(int))
-    self.mask_array = self.seg_array.astype(bool)
-    self.brain_array = self.scan_array * self.mask_array
+    self.arrays = {'scan' : sitk.GetArrayFromImage(scan), 'seg' : sitk.GetArrayFromImage(seg)}
+    self.arrays['shifted_seg'] = self.arrays['seg'] + 15*(self.arrays['seg'].astype(bool).astype(int))
+    self.arrays['mask'] = self.arrays['seg'].astype(bool).astype(int)
+    self.arrays['brain'] = self.arrays['scan'] * self.arrays['mask']
 
   def imvi(self, image, view):
     if type(image) == int: image = ['scan', 'brain', 'shifted_seg', 'mask'][image]
     else: image = image.lower()
-    if type(view) == int: view = ['Saggittal', 'Axial', 'Coronal'][view]
-    else: view = view.capitalize()
+    if type(view) == int: view = ['saggittal', 'axial', 'coronal'][view]
+    else: view = view.lower()
     return image, view
   
   def check_ax(self, ax, nx, ny, figsize, dpi, pad):
@@ -60,127 +58,100 @@ class Scan:
       fig = None
     return ax, ax_exists, fig
   
-  def plot(self, image = 'scan', view = 'saggittal', title = None, slice = 128, structure_id = None, ax = None, figsize = (5, 5), dpi = 100, ms = 2, color = 'w', save = None):
+  def plot(self, image = 'scan', view = 'saggittal', slice = 128, structure_id = None, title = None, ms = 2, c = 'w', ax = None, figsize = (5, 5), dpi = 100, save = None, print_plot = False, plot_legend = True):
     if structure_id is None: structure_id = []
     if type(structure_id) not in [list, np.ndarray]: structure_id = [structure_id]
-    if type(color) not in [list, np.ndarray]: color = [color]
+    if type(c) not in [list, np.ndarray]: c = [c]*len(structure_id)
     image, view = self.imvi(image, view)
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi, 0)
-    if view == 'Saggittal': 
-      ax.imshow(rotate(eval(f'self.{image}_array[:,:,slice]'), 270, preserve_range=True), aspect = self.spacing[0]/self.spacing[1], cmap = self.cmap)
-      for struct, c in zip(structure_id, color): ax.plot(*find_structure_coords(rotate(self.seg_array[:,:,slice], 270, preserve_range=True), struct), 's', c = c, ms = ms, label = lut[struct] if struct in lut else None)
-    elif view == 'Axial': 
-      ax.imshow(np.flip(eval(f'self.{image}_array[:,slice,:]')), aspect = self.spacing[0]/self.spacing[2], cmap = self.cmap)
-      for struct, c in zip(structure_id, color): ax.plot(*(find_structure_coords(np.flip(self.seg_array[:,slice,:]), struct)), 's', c = c, ms = ms, label = lut[struct] if struct in lut else None)
-    else: 
-      ax.imshow(eval(f'self.{image}_array[slice,:,:]'), aspect = self.spacing[2]/self.spacing[1], cmap = self.cmap)
-      for struct, c in zip(structure_id, color): ax.plot(*find_structure_coords(self.seg_array[slice,:,:], struct), 's', c = c, ms = ms, label = lut[struct] if struct in lut else None)
+
+    if view == 'saggittal': picture, seg = rotate(self.arrays[image][:,:,slice], 270, preserve_range=True), rotate(self.arrays['seg'][:,:,slice], 270, preserve_range=True)
+    elif view == 'axial': picture, seg = np.flip(self.arrays[image][:,slice,:]), np.flip(self.arrays['seg'][:,slice,:])
+    else: picture, seg = self.arrays[image][slice,:,:], self.arrays['seg'][slice,:,:]
+    ax.imshow(picture, aspect = 1, cmap = self.cmap)
+    for s, c in zip(structure_id, c): ax.plot(*(find_structure_coords(seg, s)), 's', c = c, ms = ms, label = lut[s] if s in lut else None)
     
     if title is None: title = f'Slice {slice} - {self.id} - {image.capitalize()} - {view}'
-    if len(structure_id) > 0: ax.legend(labelcolor = 'white', facecolor = 'k', markerscale = 2)
+    if plot_legend and (len(structure_id) > 0): ax.legend(labelcolor = 'white', facecolor = 'k', markerscale = 2)
     ax.set(yticks = [], xticks = [])
     ax.set_xlabel(title, c = 'w', fontsize = 8)
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
-  
-  def overlay(self, image = 'scan', view = 'saggittal', title = None, slice = 128, structure_id = 0, figsize = (8, 6), dpi = 100, ms = 2, color = 'w', print_plot = False):
-    fig, ax = plt.subplots(ncols = 2, figsize = figsize, dpi = dpi, gridspec_kw={'width_ratios': [1, 1]})
-    fig.patch.set_color('k')
+
+  def interactive(self, image = 'scan', ms = 2, c = 'w', figsize = (5, 5), dpi = 100):
+    N = len(c) if type(c) != str else 1
+    func_str = \
+      f'def plot_str(view, {"".join([f"structure_{i+1}, " for i in range(N)])}slice):\n'\
+      f'  plot(image, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], None, ms, c, None, figsize, dpi, None, True)\n\n'\
+      f'interact(plot_str, view = [\'saggittal\', \'axial\', \'coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
     
-    ax[1] = self.plot(image, view, title, slice, structure_id, ax[1], color=color)
+    exec(func_str, {'plot' : self.plot, 'interact' : interact, 'image' : image, 'ms' : ms, 'c' : c, 'figsize' : figsize, 'dpi' : dpi})
 
-    if view == 'Saggittal': segs, counts = np.unique(self.seg_array[:,:,slice].flatten(), return_counts=True)
-    elif view == 'Axial': segs, counts = np.unique(self.seg_array[:,slice,:].flatten(), return_counts=True)
-    else: segs, counts = np.unique(self.seg_array[slice,:,:].flatten(), return_counts=True)
+  def overlay(self, image = 'scan', view = 'saggittal', slice = 128, structure_id = None, title = None, ms = 2, c = 'w', ax = None, figsize = (10, 5), dpi = 100, save = None, print_plot = False):
+    if structure_id is None: structure_id = []
+    if type(structure_id) not in [list, np.ndarray]: structure_id = [structure_id]
+    if type(c) not in [list, np.ndarray]: c = [c]*len(structure_id)
+    image, view = self.imvi(image, view)
+    ax, ax_exists, _ = self.check_ax(ax, 2, 1, figsize, dpi, 0)
+    ax[1] = self.plot(image, view, slice, structure_id, title, ms, c, ax[1])
 
-    inds = np.argsort(segs)
-
-    ax[0].barh([lut[seg] + ' (' + str(seg) + ')' for seg in segs[inds][1:]], counts[inds][1:], height=0.9, align='center', color='r')
+    if view == 'saggittal': structures, counts = np.unique(self.arrays['seg'][:,:,slice].flatten(), return_counts=True)
+    elif view == 'axial': structures, counts = np.unique(self.arrays['seg'][:,slice,:].flatten(), return_counts=True)
+    else: structures, counts = np.unique(self.arrays['seg'][slice,:,:].flatten(), return_counts=True)
+    inds = np.argsort(structures)
+    ax[0].barh([lut[struct] + ' (' + str(struct) + ')' for struct in structures[inds][1:]], counts[inds][1:], height=0.9, align='center', color='r')
     
     ax[0].set_title('Relative volumes', c = 'w')
-    ax[0].set_facecolor('black')  # Black background for bar chart
-    ax[0].tick_params(axis='x', colors='white')  # White tick marks on x-axis
-    ax[0].tick_params(axis='y', colors='white')  # White tick marks on y-axis
+    ax[0].set_facecolor('black')
+    ax[0].tick_params(axis='x', colors='white')
+    ax[0].tick_params(axis='y', colors='white')
     ax[0].spines['top'].set_color('white')
     ax[0].spines['right'].set_color('white')
     ax[0].spines['bottom'].set_color('white')
     ax[0].spines['left'].set_color('white')
     ax[0].set_xticks([])
-    ax[0].yaxis.set_tick_params(labelcolor='white')  # White y-axis labels
+    ax[0].yaxis.set_tick_params(labelcolor='white')
     plt.show()
-    if print_plot: print(f'.plot(\'{image}\',\'{view}\',slice={slice},structure_id={structure_id},figsize={figsize[0]/2,figsize[1]},dpi={dpi},ms={ms},color=\'{color}\')')
+    if print_plot: print(f'.plot(\'{image}\',\'{view}\',slice={slice},structure_id={structure_id},figsize={figsize[0]/2,figsize[1]},dpi={dpi},ms={ms},c=\'{c}\')')
 
-  def overlay_2(self, image = 'scan', view = 'saggittal', title = None, slice = 128, id_1 = 0, id_2 = 0, figsize = (8, 6), dpi = 100, ms = 2, color = ['w', 'r'], print_plot = False):
-    self.overlay(image, view, title, slice, [id_1, id_2], figsize, dpi, ms, color, print_plot)
+  def interactive_overlay(self, image = 'scan', ms = 2, c = 'w', figsize = (10, 5), dpi = 100):
+    N = len(c) if type(c) != str else 1
+    func_str = \
+      f'def overlay_str(view, {"".join([f"structure_{i+1}, " for i in range(N)])}slice):\n'\
+      f'  overlay(image, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], None, ms, c, None, figsize, dpi, None, True)\n\n'\
+      f'interact(overlay_str, view = [\'saggittal\', \'axial\', \'coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
+    
+    exec(func_str, {'overlay' : self.overlay, 'interact' : interact, 'image' : image, 'ms' : ms, 'c' : c, 'figsize' : figsize, 'dpi' : dpi})
 
-  def overlay_3(self, image = 'scan', view = 'saggittal', title = None, slice = 128, id_1 = 0, id_2 = 0, id_3 = 0, figsize = (8, 6), dpi = 100, ms = 2, color = ['w', 'r', 'g'], print_plot = False):
-    self.overlay(image, view, title, slice, [id_1, id_2, id_3], figsize, dpi, ms, color, print_plot)
- 
-  def overlay_4(self, image = 'scan', view = 'saggittal', title = None, slice = 128, id_1 = 0, id_2 = 0, id_3 = 0, id_4 = 0, figsize = (8, 6), dpi = 100, ms = 2, color = ['w', 'r', 'g', 'b'], print_plot = False):
-    self.overlay(image, view, title, slice, [id_1, id_2, id_3, id_4], figsize, dpi, ms, color, print_plot)
-
-  def interactive_overlay(self, image = 'scan', title = None, figsize = (10, 6), dpi = 100, ms = 2, color = ['w', 'magenta', 'cyan', 'lime'], N = 1):
-    if N == 1:
-      interact(self.overlay, image = fixed(image), title = fixed(title), figsize = fixed(figsize), dpi = fixed(dpi),
-              slice = (0, max(eval(f'self.{image}_array.shape'))-1, 1), structure_id = (0, 77, 1), 
-              view = ['Saggittal', 'Axial', 'Coronal'], ms = fixed(ms), color = fixed(color), print_plot = fixed(True))
-    elif N == 2:
-      interact(self.overlay_2, image = fixed(image), title = fixed(title), figsize = fixed(figsize), dpi = fixed(dpi),
-              slice = (0, max(eval(f'self.{image}_array.shape'))-1, 1), 
-              id_1 = (0, 77, 1), id_2 = (0, 77, 1),
-              view = ['Saggittal', 'Axial', 'Coronal'], ms = fixed(ms), color = fixed(color), print_plot = fixed(True))
-    elif N == 3:
-      interact(self.overlay_3, image = fixed(image), title = fixed(title), figsize = fixed(figsize), dpi = fixed(dpi),
-              slice = (0, max(eval(f'self.{image}_array.shape'))-1, 1), 
-              id_1 = (0, 77, 1), id_2 = (0, 77, 1), id_3 = (0, 77, 1), 
-              view = ['Saggittal', 'Axial', 'Coronal'], ms = fixed(ms), color = fixed(color), print_plot = fixed(True))
-    else:
-      interact(self.overlay_4, image = fixed(image), title = fixed(title), figsize = fixed(figsize), dpi = fixed(dpi),
-             slice = (0, max(eval(f'self.{image}_array.shape'))-1, 1), 
-             id_1 = (0, 77, 1), id_2 = (0, 77, 1), id_3 = (0, 77, 1), id_4 = (0, 77, 1), 
-             view = ['Saggittal', 'Axial', 'Coronal'], ms = fixed(ms), color = fixed(color), print_plot = fixed(True))
-  
-
-
-  def plot_three(self, slices = [128, 128, 128], image = 'scan', label_images = True, ax = None, figsize = (10, 4), dpi = 200, pad = -2, ms = 1, save = None, structure_id = None):
+  def plot_three(self, image = 'scan', slices = [128, 128, 128], structure_id = None, title = None, ms = 2, c = 'w', ax = None, figsize = (12, 5), dpi = 100, pad = -2, save = None):
     ax, ax_exists, _ = self.check_ax(ax, 3, 1, figsize, dpi, pad)
-    for i in [0,1,2]: ax[i] = self.plot(image, i, None if label_images else '', slices[i], structure_id, ax[i], ms = ms)
+    for i in [0,1,2]: ax[i] = self.plot(image, i, slices[i], structure_id, None, ms, c, ax[i], figsize, dpi, save, False)
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def plot_hella_slices(self, slices = 5, image = 'scan', view = 1, label_images = True, ax = None, figsize = (2, 5), dpi = 200, pad = -2, ms = 1, save = None, structure_id = None):
-    
+  def plot_hella_slices(self, image = 'scan', view = 'saggittal', slices = 5, structure_id = None, ms = 2, c = 'w', ax = None, figsize = (2,5), dpi = 100, pad = -2, save = None, label_slices = True, plot_legend = True):    
     image, view = self.imvi(image, view)
-
     if type(slices) == int:
-      slicer = 'self.mask_array[:, :, i]' if view == 'Saggittal' else 'self.mask_array[:,i,:]' if view == 'Axial' else 'self.mask_array[i,:,:]'
+      slicer = 'np.any(self.arrays[\'mask\'][:, :, i])' if view == 'saggittal' else 'np.any(self.arrays[\'mask\'][:,i,:])' if view == 'axial' else 'np.any(self.arrays[\'mask\'][i,:,:])'
       i = 0
-      while not np.any(eval(slicer)): i += 1
+      while not eval(slicer): i += 1
       start = i
-      while np.any(eval(slicer)): i += 1
+      while eval(slicer): i += 1
       slices = np.linspace(start+10, i-10, slices).astype(int)
-    
     ax, ax_exists, _ = self.check_ax(ax, len(slices), 1, [figsize[0]*len(slices), figsize[1]], dpi, pad)
-
-    for i, slice in enumerate(slices): ax[i] = self.plot(image, view, f'Slice {slice}' if label_images else '', slice, structure_id, ax[i], ms=ms)
-    
+    for i, slice in enumerate(slices): ax[i] = self.plot(image, view, slice, structure_id, f'Slice {slice}' if label_slices else None, ms, c, ax[i], plot_legend = plot_legend and (i == len(slices)-1))
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def plot_buttloads_of_slices(self, n_slices = 5, image = 'scan', label_images = True, ax = None, figsize = (3, 3), dpi = 200, pad = 0, ms = 1, title = None, save = None, structure_id = None):
-    ax, ax_exists, fig = self.check_ax(ax, n_slices, 3, [figsize[0]*n_slices, figsize[1]*3], dpi, pad)
-
-    ax[0] = self.plot_hella_slices(slices = n_slices, image = image, view = 'Saggittal', label_images = label_images, ax = ax[0], structure_id = structure_id, ms = ms)
-    ax[1] = self.plot_hella_slices(slices = n_slices, image = image, view = 'Axial', label_images = label_images, ax = ax[1], structure_id = structure_id, ms = ms)
-    ax[2] = self.plot_hella_slices(slices = n_slices, image = image, view = 'Coronal', label_images = label_images, ax = ax[2], structure_id = structure_id, ms = ms)
-    
-    ax[0][0].set_ylabel('Saggittal', color = 'w')
-    ax[1][0].set_ylabel('Axial', color = 'w')
-    ax[2][0].set_ylabel('Coronal', color = 'w')
-
+  def plot_buttloads_of_slices(self, image = 'scan', slices = 5, structure_id = None, ms = 2, c = 'w', ax = None, figsize = (3,3), dpi = 100, pad = -2, save = None, title = None):    
+    ax, ax_exists, fig = self.check_ax(ax, slices, 3, [figsize[0]*slices, figsize[1]*3], dpi, pad)
+    for i in [0,1,2]: ax[i] = self.plot_hella_slices(image, i, slices, structure_id, ms, c, ax[i], figsize, dpi, pad, None, False, plot_legend = i == 0)
+    ax[0][0].set_ylabel('saggittal', color = 'w')
+    ax[1][0].set_ylabel('axial', color = 'w')
+    ax[2][0].set_ylabel('coronal', color = 'w')
     if title != None and fig != None: fig.suptitle(title, c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
@@ -196,22 +167,28 @@ class Scan:
     print(f'   Spacing : {self.spacing}')
     print(f'    Volume : {self.volume/1000:.1f}cm\u00b3')
   
-  def compare(self, other : Scan, image = 'scan', view = 'saggittal', title = None, slice = 128, structure_id = None, ms = 2, ax = None, figsize = (10, 5), dpi = 100, pad = 0, save = None, print_info = False):
+  def compare(self, other : Scan, image = 'scan', view = 'saggittal', slice = 128, structure_id = None, title = None, ms = 2, c = 'w', ax = None, figsize = (5, 5), dpi = 100, pad = -1, save = None, print_info = False, plot_legend = True):
     if print_info:
       self.print()
       print()
       other.print()
     ax, ax_exists, _ = self.check_ax(ax, 2, 1, figsize, dpi, pad)
-    self.plot(image, view, title, slice, structure_id, ax[0], ms = ms)
-    other.plot(image, view, title, slice, structure_id, ax[1], ms = ms)
+    self.plot(image, view, slice, structure_id, title, ms, c, ax[0], plot_legend=plot_legend)
+    other.plot(image, view, slice, structure_id, title, ms, c, ax[1], plot_legend=plot_legend)
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare(self, other : Scan, image = 'scan', title = None, figsize = (10, 5), dpi = 100, pad = 0):
-    interact(self.compare, other = fixed(other), image = fixed(image), view = ['Saggittal', 'Coronal', 'Axial'], title = fixed(title), slice = (0, 255, 1), structure_id = (0, 78, 1), ax = fixed(None), figsize = fixed(figsize), dpi = fixed(dpi), pad = fixed(pad), save = fixed(None), print_info = fixed(False))
+  def interactive_compare(self, other : Scan, image = 'scan', ms = 2, c = 'w', figsize = (10, 5), dpi = 100, pad = -1):
+    N = len(c) if type(c) != str else 1
+    func_str = \
+      f'def comp_str(view, {"".join([f"structure_{i+1}, " for i in range(N)])}slice):\n'\
+      f'  comp(other, image, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], None, ms, c, None, figsize, dpi, pad, None, False)\n'\
+      f'interact(comp_str, view = [\'saggittal\', \'axial\', \'coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
     
-  def compare_rgb(self, other : Scan, image = 'scan', view = 'saggittal', title = None, slice = 128, structure_id = None, ax = None, figsize = (5, 5), dpi = 100, save = None, print_info = False):
+    exec(func_str, {'comp' : self.compare, 'interact' : interact, 'other' : other, 'image' : image, 'ms' : ms, 'c' : c, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad})
+
+  def compare_rgb(self, other : Scan, image = 'scan', view = 'saggittal', slice = 128, structure_id = None, ax = None, figsize = (5, 5), dpi = 100, save = None, print_info = False):
     if print_info:
       self.print()
       print()
@@ -219,39 +196,38 @@ class Scan:
     image, view = self.imvi(image, view)
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi, 0)
 
-    if view == 'Saggittal':
-      rgb = np.zeros(eval(f'list(rotate(self.{image}_array[:,:,slice], 270).shape) + [3]'))
-      rgb[:,:,0] = rotate(eval( f'self.{image}_array[:,:,slice]'), 270, preserve_range = True)
-      rgb[:,:,1] = rotate(eval(f'other.{image}_array[:,:,slice]'), 270, preserve_range = True)
-      rgb[:,:,2] = rotate(eval( f'self.{image}_array[:,:,slice]'), 270, preserve_range = True)
+    rgb = np.zeros((256, 256, 3))
+
+    if view == 'saggittal':
+      rgb[:,:,0] = rotate(self.arrays[image][:,:,slice], 270, preserve_range = True)
+      rgb[:,:,1] = rotate(other.arrays[image][:,:,slice], 270, preserve_range = True)
+      rgb[:,:,2] = rotate(self.arrays[image][:,:,slice], 270, preserve_range = True)
       for i in [0,1,2]: rgb[:,:,i] /= np.max(rgb[:,:,i])*2
       ax.imshow(rgb)
       if structure_id != None: 
-        ax.plot(*find_structure_coords(rotate(self.seg_array[:,:,slice], 270, preserve_range = True), structure_id), 's', c = [1,0,1,1], ms = 2, label = f'P{self.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
-        ax.plot(*find_structure_coords(rotate(other.seg_array[:,:,slice], 270, preserve_range = True), structure_id), 's', c = [0,1,0,1], ms = 2, label = f'P{other.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
-    elif view == 'Axial': 
-      rgb = np.zeros(eval(f'list(self.{image}_array[:,slice,:].shape) + [3]'))
-      rgb[:,:,0] = np.flip(eval( f'self.{image}_array[:,slice,:]'))
-      rgb[:,:,1] = np.flip(eval(f'other.{image}_array[:,slice,:]'))
-      rgb[:,:,2] = np.flip(eval( f'self.{image}_array[:,slice,:]'))
+        ax.plot(*find_structure_coords(rotate(self.arrays['seg'][:,:,slice], 270, preserve_range = True), structure_id), 's', c = [1,0,1,1], ms = 2, label = f'P{self.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
+        ax.plot(*find_structure_coords(rotate(other.arrays['seg'][:,:,slice], 270, preserve_range = True), structure_id), 's', c = [0,1,0,1], ms = 2, label = f'P{other.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
+    elif view == 'axial': 
+      rgb[:,:,0] = np.flip(self.arrays[image][:,slice,:])
+      rgb[:,:,1] = np.flip(other.arrays[image][:,slice,:])
+      rgb[:,:,2] = np.flip(self.arrays[image][:,slice,:])
       for i in [0,1,2]: rgb[:,:,i] /= np.max(rgb[:,:,i])*2
       ax.imshow(rgb)
       if structure_id != None: 
         ax.plot(*find_structure_coords(np.flip(self.seg_array[:,slice,:]), structure_id), 's', c = [1,0,1,1], ms = 2, label = f'P{self.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
         ax.plot(*find_structure_coords(np.flip(other.seg_array[:,slice,:]), structure_id), 's', c = [0,1,0,1], ms = 2, label = f'P{other.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
     else: 
-      rgb = np.zeros(eval(f'list(self.{image}_array[slice,:,:].shape) + [3]'))
-      rgb[:,:,0] = eval( f'self.{image}_array[slice,:,:]')
-      rgb[:,:,1] = eval(f'other.{image}_array[slice,:,:]')
-      rgb[:,:,2] = eval( f'self.{image}_array[slice,:,:]')
+      rgb[:,:,0] = self.arrays[image][slice,:,:]
+      rgb[:,:,1] = other.arrays[image][slice,:,:]
+      rgb[:,:,2] = self.arrays[image][slice,:,:]
       for i in [0,1,2]: rgb[:,:,i] /= np.max(rgb[:,:,i])*2
       ax.imshow(rgb)
       if structure_id != None: 
-        ax.plot(*find_structure_coords(self.seg_array[slice,:,:], structure_id), 's', c = [1,0,1,1], ms = 2, label = f'P{self.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
-        ax.plot(*find_structure_coords(other.seg_array[slice,:,:], structure_id), 's', c = [0,1,0,1], ms = 2, label = f'P{other.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
+        ax.plot(*find_structure_coords(self.arrays['seg'][slice,:,:], structure_id), 's', c = [1,0,1,1], ms = 2, label = f'P{self.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
+        ax.plot(*find_structure_coords(other.arrays['seg'][slice,:,:], structure_id), 's', c = [0,1,0,1], ms = 2, label = f'P{other.id} {lut[structure_id] if structure_id in lut else 'Unknown'}')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare_rgb(self, other : Scan, image = 'scan', view = 'saggittal', title = None, figsize = (10, 5), dpi = 100, pad = 0):
-    interact(self.compare_rgb, other = fixed(other), image = fixed(image), view = ['Saggittal', 'Coronal', 'Axial'], title = fixed(title), slice = (0, 255, 1), structure_id = (0, 78, 1), ax = fixed(None), figsize = fixed(figsize), dpi = fixed(dpi), save = fixed(None), print_info = fixed(False))
+  def interactive_compare_rgb(self, other : Scan, image = 'scan', ms = 2, figsize = (10, 5), dpi = 100):
+    interact(self.compare_rgb, other = fixed(other), image = fixed(image), view = ['saggittal', 'coronal', 'axial'], slice = (0, 255, 1), structure_id = (0, 78, 1), ax = fixed(None), figsize = fixed(figsize), dpi = fixed(dpi), save = fixed(None), print_info = fixed(False))
