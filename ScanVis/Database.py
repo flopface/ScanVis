@@ -10,7 +10,7 @@ class Database:
     self.scan_folder = scan_folder
     self.seg_folder = seg_folder
     segs = [file for file in os.listdir(self.seg_folder) if '.nii' in file]
-    self.files = [file for file in os.listdir(scan_folder) if '.nii' in file and file in segs]
+    self.files = sorted([file for file in os.listdir(scan_folder) if '.nii' in file and file in segs])
     self.check_excess()
     self.validate_patient_info(patient_info)
     
@@ -60,7 +60,13 @@ class Database:
     elif len(options) == 1: file = options[0]
     else: file = user_decision(options)
     return Subject(seg_file = join(self.seg_folder, file), age = self.patient_info[file][0], gender = self.patient_info[file][1])
-  
+
+  def get_subjects(self):
+    subjects = []
+    for i, file in enumerate(self.files):
+      progress_word(i+1, len(self.files))
+      subjects.append(self.subject(file))
+    return subjects
 
   def __call__(self, id):
-    self.scan(id)
+    return self.scan(id)

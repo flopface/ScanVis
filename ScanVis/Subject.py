@@ -2,8 +2,6 @@ import SimpleITK as sitk
 import os
 import numpy as np
 
-from .useful_stuff import *
-
 class Subject:
   def __init__(self, seg_file, age = 0, gender = 'Unknown'):
     self.seg_file = seg_file
