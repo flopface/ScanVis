@@ -1,0 +1,15 @@
+setup.py
+ScanVis/Data.py
+ScanVis/Database.py
+ScanVis/Datantsbase.py
+ScanVis/Scan.py
+ScanVis/Scant.py
+ScanVis/Scanter.py
+ScanVis/Subject.py
+ScanVis/__init__.py
+ScanVis/useful_stuff.py
+ScanVis.egg-info/PKG-INFO
+ScanVis.egg-info/SOURCES.txt
+ScanVis.egg-info/dependency_links.txt
+ScanVis.egg-info/requires.txt
+ScanVis.egg-info/top_level.txt

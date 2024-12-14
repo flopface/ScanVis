@@ -7,6 +7,6 @@ setup(
     description="A library for visualising MRI scans",
     author="Tom Melichar",
     author_email="tbmelichar@gmail.com",
-    install_requires=['numpy', 'matplotlib', 'scipy', 'SimpleITK', 'ipywidgets', 'scikit.image'],
+    install_requires=['numpy', 'matplotlib', 'scipy', 'SimpleITK', 'ipywidgets', 'scikit.image', 'ants'],
     python_requires=">=3.6",
 )
