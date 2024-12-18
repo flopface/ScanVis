@@ -44,6 +44,16 @@ def find_structure_coords(image, structure_id):
   y, x = np.where(image)
   return x, y
 
+def find_structure_and_outline(image, structure_id):
+  image = ~(image - structure_id).astype(bool)
+  edges = find_edges_2D(image)
+  y, x = np.where(edges)
+  return image, x, y
+
+def print_color(color):
+  if type(color) is str: return f'\'{color}\''
+  if type(color) is list: return '['+''.join([str(num)+',' for num in color])[:-2]+']'
+
 def progress_word(current, total, word = 'lets just say, hehe, my peenitz'):
   length = len(word)
   progress = int(current / total * length // 1)
