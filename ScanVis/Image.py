@@ -1,10 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
-import SimpleITK as sitk
-import os
 from ipywidgets import interact, fixed
-from skimage.transform import rotate
 from typing import Literal
 from .useful_stuff import *
 from .Segmentation import *
@@ -14,16 +11,16 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap, to_rgb, t
 cnames = list(cnames)
 
 class Image(Array3D):
-  def __init__(self, key : str, data, seg : Segmentation = Segmentation(None), id = None, mask = False, normalise = True, centre = None, cmap = 'inferno'):
+  def __init__(self, data, key : str = '', seg : Segmentation = Segmentation(None), id = None, mask = False, normalise = True, centre = None, cmap = 'inferno'):
     super().__init__(data)
     self.id = key if id is None else id
     self.key = key
     self.normalise_color(normalise, centre)
     self.set_cmap(cmap)
     self.seg = seg
-    if mask:
-      mask = self.seg.get_mask()
-      self.array = self.array * mask + centre * (~mask.astype(bool)).astype(int)
+    self.centre = centre
+    self.mask = mask
+    if self.mask and not self.seg.isNone: self.mask_image()
 
   def normalise_color(self, normalise = True, centre = None):
     if normalise:
@@ -54,6 +51,14 @@ class Image(Array3D):
       ax_exists = True
       fig = None
     return ax, ax_exists, fig
+
+  def set_seg(self, seg : Segmentation):
+    self.seg = seg
+
+  def mask_image(self):
+    mask = self.seg.get_mask()
+    self.array = self.array * mask
+    if self.centre is not None: self.array += self.centre * (~mask.astype(bool)).astype(int)
 
   def plot(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi)
@@ -117,7 +122,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare(self, other : Image, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, title = None, fontsize = 8, figsize = (10, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
+  def interactive_compare(self, other : Image, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, title = None, fontsize = 8, figsize = (5, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
     N = len(c) if type(c) != str else 1
     func_str = \
       f'def compare_str(view, {"".join([f"structure_{i+1} = {i+2}, " for i in range(N)])}slice = 100):\n'\
@@ -144,7 +149,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare_rgb(self, other : Image, ms = 2, c = 'w', fill_alpha = 0, outline_alpha = 1, title = None, fontsize = 8, figsize = (10, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
+  def interactive_compare_rgb(self, other : Image, ms = 2, c = 'w', fill_alpha = 0, outline_alpha = 1, title = None, fontsize = 8, figsize = (10, 5), dpi = 100):
     N = int(len(c)/2) if type(c) != str else 1
     func_str = \
       f'def compare_rgb_str(view, {"".join([f"structure_{i+1} = {i+2}, " for i in range(N)])}slice = 100):\n'\
