@@ -36,25 +36,30 @@ def find_structure_and_outline(image, structure_id):
   image = ~(image - structure_id).astype(bool)
   edges = find_edges_2D(image)
   y, x = np.where(edges)
-  return image, x, y 
+  return image.astype(int), x, y 
 
 class Segmentation(Array3D):
   def __init__(self, data): super().__init__(data)
 
-  def plot(self, ax, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 120, structure_id = 0, fontsize = 8, color = 'w', ms = 2, fill_alpha = 0.2, outline_alpha = 1, plot_legend = True, label_start = ''):
+  def plot(self, ax, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 120, structure_id = 0, fontsize = 8, color = 'w', ms = 2, fill_alpha = 0.2, outline_alpha = 1, flipped = False, plot_legend = True, label_start = ''):
     if type(structure_id) is int: structure_id = [structure_id]
     if self.isNone or len(structure_id) == 0: return ax
     picture = self.get_slice(view, slice)
     if type(structure_id) not in [list, np.ndarray]: structure_id = [structure_id]
     if type(color) not in [list, np.ndarray]: color = [color]
+    if type(ms) not in [list, np.ndarray]: ms = [ms] * len(structure_id)
+    if type(fill_alpha) not in [list, np.ndarray]: fill_alpha = [fill_alpha] * len(structure_id)
+    if type(outline_alpha) not in [list, np.ndarray]: outline_alpha = [outline_alpha] * len(structure_id)
+    if type(flipped) not in [list, np.ndarray]: flipped = [flipped] * len(structure_id)
 
-    for s, c in zip(structure_id, color):
+    for s, c, m, f, o, fl in zip(structure_id, color, ms, fill_alpha, outline_alpha, flipped):
       c = list(to_rgb(c))
       fill, x, y = find_structure_and_outline(picture, s)
-      ax.plot(x, y, 's', c = c, alpha = outline_alpha, ms = ms, label = label_start + lut[s] if s in lut else None)
-      if fill_alpha > 0:
-        fill_cmap = LinearSegmentedColormap.from_list('my_cmap', [[0,0,0,0], c+[fill_alpha]], 2)
-        ax.imshow(fill, cmap = fill_cmap)
+      ax.plot(x, y, 's', c = c, alpha = o, ms = m, label = label_start + lut[s] if s in lut else None)
+      if f > 0:
+        fill_cmap = LinearSegmentedColormap.from_list('my_cmap', [[0,0,0,0], c+[f]], 2)
+        if fl: ax.imshow(~fill+2, cmap = fill_cmap, vmin = 0, vmax = 1)
+        else: ax.imshow(fill, cmap = fill_cmap, vmin = 0, vmax = 1)
 
     if plot_legend: ax.legend(labelcolor = 'white', facecolor = 'k', markerscale = 2, loc = 'upper right', fontsize = fontsize)
     return ax

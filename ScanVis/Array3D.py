@@ -18,7 +18,7 @@ class Array3D():
       if len(data.shape) == 3: self.array = data
       else: raise TypeError(f'Input data must be 3D - current shape = {data.shape}')
     elif type(data) is str:
-      if not os.path.isfile(data): raise Exception(f'Input data does not exist')
+      if not os.path.isfile(data): raise Exception(f'{data} not found')
       if data[-4:] == '.nii': self.array = sitk.GetArrayFromImage(sitk.ReadImage(data))
       elif data[-4:] == '.npy': self.array = np.load(data)
     else: raise TypeError(f'Input data must be path to .nii or .npy, or an array, not {data}')

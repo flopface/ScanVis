@@ -2,24 +2,22 @@ from .Image import *
 from collections.abc import MutableMapping
 
 class Images(MutableMapping):
-  def __init__(self, images, keys, id = 'A0001', seg = None):
+  def __init__(self, images, id = 'A0001', seg = None):
     if type(images) not in [list, np.ndarray]: images = [images]
-    if type(keys) not in [list, np.ndarray]: keys = [keys]
     for i in range(len(images)): 
       if type(images[i]) is str: images[i] = Image(images[i])
       elif type(images[i]) is not Image: raise TypeError('All input images must be of type Image')
-    if len(keys) != len(images): raise Exception('Different number of images and keys')
 
     self.images = dict()
-
-    for image, key in zip(images, keys): 
-      self.images[key] = image
-      image.key = key
-      image.id = id
+    self.id = id
+    for image in images: 
+      self.images[image.key] = image
+      image.id = self.id
 
     if seg is not None: self.set_seg(seg)
 
   def set_seg(self, seg):
+    if type(seg) is str: seg = Segmentation(seg)
     for image in self.images.values(): 
       image.set_seg(seg)
       if image.mask: image.mask_image()

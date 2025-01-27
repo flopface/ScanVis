@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap, to_rgb, t
 cnames = list(cnames)
 
 class Image(Array3D):
-  def __init__(self, data, key : str = '', seg : Segmentation = Segmentation(None), id = None, mask = False, normalise = True, centre = None, cmap = 'inferno'):
+  def __init__(self, key : str, data, seg : Segmentation = Segmentation(None), id = None, mask = False, normalise = True, centre = None, cmap = 'inferno'):
     super().__init__(data)
     self.id = key if id is None else id
     self.key = key
@@ -52,19 +52,20 @@ class Image(Array3D):
       fig = None
     return ax, ax_exists, fig
 
-  def set_seg(self, seg : Segmentation):
-    self.seg = seg
+  def set_seg(self, seg : Segmentation): self.seg = seg
+
+  def set_id(self, id : str): self.id = id
 
   def mask_image(self):
     mask = self.seg.get_mask()
     self.array = self.array * mask
     if self.centre is not None: self.array += self.centre * (~mask.astype(bool)).astype(int)
 
-  def plot(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
+  def plot(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi)
     picture = self.get_slice(view, slice)
     ax.imshow(picture, aspect = 1, cmap = self.cmap, vmin = self.smallest, vmax = self.biggest)
-    ax = self.seg.plot(ax, view, slice, structure_id, fontsize, c, ms, fill_alpha, outline_alpha, plot_legend)
+    ax = self.seg.plot(ax, view, slice, structure_id, fontsize, c, ms, fill_alpha, outline_alpha, flipped, plot_legend)
     ax.set(yticks = [], xticks = [], frame_on = False)
     ax.set_xlabel(f'Slice {slice} - {self.id} - {self.key.capitalize()} - {view}' if title is None else title, c = 'w', fontsize = fontsize)
     if ax_exists: return ax
@@ -93,7 +94,7 @@ class Image(Array3D):
     # Executing the strings to begin the interact
     exec(func_str+interact_str, {'plot' : self.plot, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi})
 
-  def overlay(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (10,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
+  def overlay(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (10,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 2, 1, figsize, dpi, pad, w_pad, h_pad)
     picture = self.get_slice(view, slice)
     ax[1].imshow(picture, aspect = 1, cmap = self.cmap, vmin = self.smallest, vmax = self.biggest)
@@ -113,7 +114,7 @@ class Image(Array3D):
     
     exec(func_str, {'overlay' : self.overlay, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
 
-  def compare(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (5,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
+  def compare(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (5,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
     ax, ax_exists, fig = self.check_ax(ax, 2, 1, figsize, dpi, pad, w_pad, h_pad)
     ax[0]  = self.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, ax[0], plot_legend=plot_legend)
     ax[1] = other.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, ax[1], plot_legend=plot_legend)
@@ -131,7 +132,7 @@ class Image(Array3D):
     
     exec(func_str, {'compare' : self.compare, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
 
-  def compare_rgb(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0, outline_alpha = 1, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
+  def compare_rgb(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0, outline_alpha = 1, flipped = False, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi)
     rgb = np.zeros((256, 256, 3))
     picture = self.get_slice(view, slice)
@@ -158,7 +159,7 @@ class Image(Array3D):
     
     exec(func_str, {'compare_rgb' : self.compare_rgb, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi})
 
-  def plot_three(self, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
+  def plot_three(self, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 1, figsize, dpi, pad, w_pad, h_pad)
     for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[i], plot_legend = i == 2 and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
@@ -166,7 +167,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def compare_three(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
+  def compare_three(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 2, figsize, dpi, pad, w_pad, h_pad)
     for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[0][i] = self.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[0][i], plot_legend = i == 2 and plot_legend)
     for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[1][i] = other.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[1][i], plot_legend = i == 2 and plot_legend)
@@ -175,7 +176,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def compare_three_rgb(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
+  def compare_three_rgb(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 1, figsize, dpi, pad, w_pad, h_pad)
     for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.compare_rgb(other, view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[i], plot_legend = i == 2 and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
@@ -183,18 +184,18 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def plot_hella_slices(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def plot_hella_slices(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 1, figsize, dpi, pad, w_pad, h_pad)
     if type(buffer) not in [list, np.ndarray]: buffer = [buffer, buffer]
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
     if type(slices) == int: slices = self.seg.get_slices(view, slices, buffer)
-    for i, slice in enumerate(slices): ax[i] = self.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, ax[i], plot_legend = (i == len(slices)-1) and plot_legend)
+    for i, slice in enumerate(slices): ax[i] = self.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, flipped, ax[i], plot_legend = (i == len(slices)-1) and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
   
-  def compare_hella_slices(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def compare_hella_slices(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 2, figsize, dpi, pad, w_pad, h_pad)
     if type(buffer) not in [list, np.ndarray]: buffer = [buffer, buffer]
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
@@ -209,7 +210,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def compare_hella_slices_rgb(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def compare_hella_slices_rgb(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3,3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 1, figsize, dpi, pad, w_pad, h_pad)
     if type(buffer) not in [list, np.ndarray]: buffer = [buffer, buffer]
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
@@ -220,7 +221,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def plot_buttloads_of_slices(self, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def plot_buttloads_of_slices(self, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 3, figsize, dpi, pad, w_pad, h_pad)
     
     # Allowed buffer inputs are a, [a, b], or [[a, b], [c, d], [e, f]]
@@ -229,7 +230,7 @@ class Image(Array3D):
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
     if type(label_slices) not in [list, np.ndarray]: label_slices = [label_slices, label_slices]
 
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.plot_hella_slices(view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[i], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.plot_hella_slices(view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[i], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
     ax[0][0].set_ylabel('Saggittal', color = 'w', fontsize = fontsize[0])
     ax[1][0].set_ylabel('Axial', color = 'w', fontsize = fontsize[0])
     ax[2][0].set_ylabel('Coronal', color = 'w', fontsize = fontsize[0])
@@ -238,7 +239,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def compare_buttloads_of_slices(self, other : Image, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def compare_buttloads_of_slices(self, other : Image, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 6, figsize, dpi, pad, w_pad, h_pad)
     
     # Allowed buffer inputs are a, [a, b], or [[a, b], [c, d], [e, f]]
@@ -252,7 +253,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
     plt.show()
 
-  def compare_buttloads_of_slices_rgb(self, other : Image, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
+  def compare_buttloads_of_slices_rgb(self, other : Image, slices = 5, buffer = 10, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (3, 3), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, label_slices = True, label_images = False, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, slices, 3, figsize, dpi, pad, w_pad, h_pad)
     
     # Allowed buffer inputs are a, [a, b], or [[a, b], [c, d], [e, f]]
