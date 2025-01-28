@@ -55,13 +55,14 @@ class Segmentation(Array3D):
     for s, c, m, f, o, fl in zip(structure_id, color, ms, fill_alpha, outline_alpha, flipped):
       c = list(to_rgb(c))
       fill, x, y = find_structure_and_outline(picture, s)
-      ax.plot(x, y, 's', c = c, alpha = o, ms = m, label = label_start + lut[s] if s in lut else None)
+      ax.plot(x, y, 'o', c = c, alpha = o, ms = m)#, label = label_start + lut[s] if s in lut else None)
+      ax.plot([], [], 'o', c = c, ms = 5, label = label_start + lut[s] if s in lut else None)
       if f > 0:
         fill_cmap = LinearSegmentedColormap.from_list('my_cmap', [[0,0,0,0], c+[f]], 2)
         if fl: ax.imshow(~fill+2, cmap = fill_cmap, vmin = 0, vmax = 1)
         else: ax.imshow(fill, cmap = fill_cmap, vmin = 0, vmax = 1)
 
-    if plot_legend: ax.legend(labelcolor = 'white', facecolor = 'k', markerscale = 2, loc = 'upper right', fontsize = fontsize)
+    if plot_legend: ax.legend(labelcolor = 'white', facecolor = 'k', loc = 'upper right', fontsize = fontsize)
     return ax
 
   def get_mask(self):

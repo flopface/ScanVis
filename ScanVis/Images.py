@@ -22,6 +22,9 @@ class Images(MutableMapping):
       image.set_seg(seg)
       if image.mask: image.mask_image()
 
+  def mask_image(self, key = 'scan', new_key = 'brain', normalise = True, centre = None, cmap = 'inferno'):
+    self.images[new_key] = Image(new_key, self.images[key].array, self.images[key].seg, self.id, True, normalise = normalise, centre = centre, cmap = cmap)
+
   def __getitem__(self, key) -> Image:
     return self.images[key]
   

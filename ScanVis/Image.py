@@ -75,11 +75,12 @@ class Image(Array3D):
   def interactive(self, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, title = None, fontsize = 8, figsize = (5, 5), dpi = 100):
     cn = ''.join([f'\'{col}\',' for col in cnames])[:-1]
     if type(c) not in [list, np.ndarray]: c = [c]
+    initial_structures = [2, 41, 7, 46, 16, 3, 42, 8, 47] + [1] * 68
 
     # Setting up strings containing a function to be called, and an interact calling it, with custom inputs to vary the UI
-    func_str = f'def plot_str(view, {"".join([f"structure_{i+1} = {2+i}, color_{i+1} = \'{cnames[i]}\', " if col is None else f"structure_{i+1} = {2+i}, " for i, col in enumerate(c)])}'
+    func_str = f'def plot_str(view, {"".join([f"structure_{i+1} = {initial_structures[i]}, color_{i+1} = \'{cnames[i]}\', " if col is None else f"structure_{i+1} = {initial_structures[i]}, " for i, col in enumerate(c)])}'
     interact_str = f'interact(plot_str, view = [\'Saggittal\', \'Axial\', \'Coronal\'], {"".join([f"structure_{i+1} = (0,77,1), color_{i+1} = [{cn}], " if col is None else f"structure_{i+1} = (0,77,1), " for i, col in enumerate(c)])}'
-    
+    print(func_str)
     # Adding interactive components for ms and alphas if they are input as None
     for item, name, ops in zip([ms, fill_alpha, outline_alpha, fontsize], ['ms = 2', 'fill_alpha = 0.2', 'outline_alpha = 1', 'fontsize = 8'], ['ms = (0,5,0.1)', 'fill_alpha = (0,1,0.01)', 'outline_alpha = (0,1,0.01)', 'fontsize = (4,32,0.1)']):
       if item is None:
