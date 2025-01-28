@@ -72,7 +72,7 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive(self, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, title = None, fontsize = 8, figsize = (5, 5), dpi = 100):
+  def interactive(self, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, title = None, fontsize = 8, figsize = (5, 5), dpi = 100):
     cn = ''.join([f'\'{col}\',' for col in cnames])[:-1]
     if type(c) not in [list, np.ndarray]: c = [c]
 
@@ -88,49 +88,49 @@ class Image(Array3D):
     
     # Finalising strings and placing slice as the final input for cleaner UI
     func_str += 'slice = 100):\n'\
-      f'  plot(view, slice, [{"".join([f"structure_{i+1}, " for i in range(len(c))])[:-2]}], title, fontsize, ms, [{"".join([f"color_{i+1}," if col is None else print_color(col)+"," for i, col in enumerate(c)])[:-1]}], fill_alpha, outline_alpha, None, figsize, dpi, None, True)\n\n'
+      f'  plot(view, slice, [{"".join([f"structure_{i+1}, " for i in range(len(c))])[:-2]}], title, fontsize, ms, [{"".join([f"color_{i+1}," if col is None else print_color(col)+"," for i, col in enumerate(c)])[:-1]}], fill_alpha, outline_alpha, flipped, None, figsize, dpi, None, True)\n\n'
     interact_str += 'slice = (0,255,1))'
 
     # Executing the strings to begin the interact
-    exec(func_str+interact_str, {'plot' : self.plot, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi})
+    exec(func_str+interact_str, {'plot' : self.plot, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'flipped' : flipped, 'figsize' : figsize, 'dpi' : dpi})
 
   def overlay(self, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (10,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 2, 1, figsize, dpi, pad, w_pad, h_pad)
     picture = self.get_slice(view, slice)
     ax[1].imshow(picture, aspect = 1, cmap = self.cmap, vmin = self.smallest, vmax = self.biggest)
-    ax = self.seg.overlay(ax, view, slice, structure_id, fontsize, c, ms, fill_alpha, outline_alpha, plot_legend)
+    ax = self.seg.overlay(ax, view, slice, structure_id, fontsize, c, ms, fill_alpha, outline_alpha, flipped, plot_legend)
     ax[1].set(yticks = [], xticks = [], frame_on = False)
     ax[1].set_xlabel(f'Slice {slice} - {self.id} - {self.key.capitalize()} - {view}' if title is None else title, c = 'w', fontsize = fontsize)
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()  
 
-  def interactive_overlay(self, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, title = None, fontsize = 8, figsize = (10, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
+  def interactive_overlay(self, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, title = None, fontsize = 8, figsize = (10, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
     N = len(c) if type(c) != str else 1
     func_str = \
       f'def overlay_str(view, {"".join([f"structure_{i+1} = {i+2}, " for i in range(N)])}slice = 100):\n'\
-      f'  overlay(view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, None, figsize, dpi, pad, w_pad, h_pad, None, True)\n\n'\
+      f'  overlay(view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, flipped, None, figsize, dpi, pad, w_pad, h_pad, None, True)\n\n'\
       f'interact(overlay_str, view = [\'Saggittal\', \'Axial\', \'Coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
     
-    exec(func_str, {'overlay' : self.overlay, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
+    exec(func_str, {'overlay' : self.overlay, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'flipped' : flipped, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
 
   def compare(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (5,  5), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True):
     ax, ax_exists, fig = self.check_ax(ax, 2, 1, figsize, dpi, pad, w_pad, h_pad)
-    ax[0]  = self.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, ax[0], plot_legend=plot_legend)
-    ax[1] = other.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, ax[1], plot_legend=plot_legend)
+    ax[0]  = self.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[0], plot_legend=plot_legend)
+    ax[1] = other.plot(view, slice, structure_id, title, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[1], plot_legend=plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare(self, other : Image, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, title = None, fontsize = 8, figsize = (5, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
+  def interactive_compare(self, other : Image, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, title = None, fontsize = 8, figsize = (5, 5), dpi = 100, pad = -2, w_pad = None, h_pad = None):
     N = len(c) if type(c) != str else 1
     func_str = \
       f'def compare_str(view, {"".join([f"structure_{i+1} = {i+2}, " for i in range(N)])}slice = 100):\n'\
-      f'  compare(other, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, None, figsize, dpi, pad, w_pad, h_pad, None, True)\n\n'\
+      f'  compare(other, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, flipped, None, figsize, dpi, pad, w_pad, h_pad, None, True)\n\n'\
       f'interact(compare_str, view = [\'Saggittal\', \'Axial\', \'Coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
     
-    exec(func_str, {'compare' : self.compare, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
+    exec(func_str, {'compare' : self.compare, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'flipped' : flipped,'figsize' : figsize, 'dpi' : dpi, 'pad' : pad, 'w_pad' : w_pad, 'h_pad' : h_pad})
 
   def compare_rgb(self, other : Image, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 128, structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0, outline_alpha = 1, flipped = False, ax = None, figsize = (5,  5), dpi = 100, save = None, plot_legend = True):
     ax, ax_exists, _ = self.check_ax(ax, 1, 1, figsize, dpi)
@@ -141,8 +141,8 @@ class Image(Array3D):
     rgb[:,:,1] = other.get_slice(view, slice)
     for i in [0,1,2]: rgb[:,:,i] /= np.max(rgb[:,:,i])*2
     ax.imshow(rgb)
-    ax = self.seg.plot(ax, view, slice, structure_id, fontsize, c[::2], ms, fill_alpha, outline_alpha, False, self.id+' ')
-    ax = other.seg.plot(ax, view, slice, structure_id, fontsize, c[1::2], ms, fill_alpha, outline_alpha, False, other.id+' ')
+    ax = self.seg.plot(ax, view, slice, structure_id, fontsize, c[::2], ms, fill_alpha, outline_alpha, flipped, False, self.id+' ')
+    ax = other.seg.plot(ax, view, slice, structure_id, fontsize, c[1::2], ms, fill_alpha, outline_alpha, flipped, False, other.id+' ')
     ax.set(yticks = [], xticks = [], frame_on = False)
     ax.set_xlabel(f'Slice {slice} - {self.id} - {other.id} - {view}' if title is None else title, c = 'w', fontsize = fontsize)
     if plot_legend and len(structure_id) > 0: ax.legend(labelcolor = 'white', facecolor = 'k', markerscale = 2, loc = 'upper right', fontsize = fontsize)
@@ -150,14 +150,14 @@ class Image(Array3D):
     if save != None: plt.savefig(save, dpi = 600, bbox_inches = 'tight')
     plt.show()
 
-  def interactive_compare_rgb(self, other : Image, ms = 2, c = 'w', fill_alpha = 0, outline_alpha = 1, title = None, fontsize = 8, figsize = (10, 5), dpi = 100):
+  def interactive_compare_rgb(self, other : Image, ms = 2, c = 'w', fill_alpha = 0, outline_alpha = 1, flipped = False, title = None, fontsize = 8, figsize = (10, 5), dpi = 100):
     N = int(len(c)/2) if type(c) != str else 1
     func_str = \
       f'def compare_rgb_str(view, {"".join([f"structure_{i+1} = {i+2}, " for i in range(N)])}slice = 100):\n'\
-      f'  compare_rgb(other, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, None, figsize, dpi, None, True)\n\n'\
+      f'  compare_rgb(other, view, slice, [{"".join([f"structure_{i+1}, " for i in range(N)])[:-2]}], title, fontsize, ms, c, fill_alpha, outline_alpha, flipped, None, figsize, dpi, None, True)\n\n'\
       f'interact(compare_rgb_str, view = [\'Saggittal\', \'Axial\', \'Coronal\'], {"".join([f"structure_{i+1} = (0,77,1), " for i in range(N)])}slice = (0,255,1))'
     
-    exec(func_str, {'compare_rgb' : self.compare_rgb, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'figsize' : figsize, 'dpi' : dpi})
+    exec(func_str, {'compare_rgb' : self.compare_rgb, 'other' : other, 'interact' : interact, 'title' : title, 'fontsize' : fontsize, 'ms' : ms, 'c' : c, 'fill_alpha' : fill_alpha, 'outline_alpha' : outline_alpha, 'flipped' : flipped, 'figsize' : figsize, 'dpi' : dpi})
 
   def plot_three(self, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = 'w', fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 1, figsize, dpi, pad, w_pad, h_pad)
@@ -169,8 +169,8 @@ class Image(Array3D):
 
   def compare_three(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 2, figsize, dpi, pad, w_pad, h_pad)
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[0][i] = self.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[0][i], plot_legend = i == 2 and plot_legend)
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[1][i] = other.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[1][i], plot_legend = i == 2 and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[0][i] = self.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[0][i], plot_legend = i == 2 and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[1][i] = other.plot(view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[1][i], plot_legend = i == 2 and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
@@ -178,7 +178,7 @@ class Image(Array3D):
 
   def compare_three_rgb(self, other : Image, slices = [128, 128, 128], structure_id = [], title = None, fontsize = 8, ms = 2, c = ['magenta', 'lime'], fill_alpha = 0.2, outline_alpha = 1, flipped = False, ax = None, figsize = (4,4), dpi = 100, pad = -2, w_pad = None, h_pad = None, save = None, plot_legend = True): 
     ax, ax_exists, fig = self.check_ax(ax, 3, 1, figsize, dpi, pad, w_pad, h_pad)
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.compare_rgb(other, view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[i], plot_legend = i == 2 and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.compare_rgb(other, view, slices[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[i], plot_legend = i == 2 and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
@@ -201,8 +201,8 @@ class Image(Array3D):
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
     if type(label_slices) not in [list, np.ndarray]: label_slices = [label_slices, label_slices]
     if type(slices) == int: slices = self.seg.get_slices(view, slices, buffer)
-    for i, slice in enumerate(slices): ax[0][i] = self.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices[0] else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, ax[0][i], plot_legend = (i == len(slices)-1) and plot_legend)
-    for i, slice in enumerate(slices): ax[1][i] = other.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices[1] else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, ax[1][i])
+    for i, slice in enumerate(slices): ax[0][i] = self.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices[0] else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, flipped, ax[0][i], plot_legend = (i == len(slices)-1) and plot_legend)
+    for i, slice in enumerate(slices): ax[1][i] = other.plot(view, slices[i], structure_id, f'Slice {slice}' if label_slices[1] else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, flipped, ax[1][i])
     ax[0][0].set_ylabel(f'{self.id} {view}', color = 'w', fontsize = fontsize[0])
     ax[1][0].set_ylabel(f'{other.id} {view}', color = 'w', fontsize = fontsize[0])
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
@@ -215,7 +215,7 @@ class Image(Array3D):
     if type(buffer) not in [list, np.ndarray]: buffer = [buffer, buffer]
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
     if type(slices) == int: slices = self.seg.get_slices(view, slices, buffer)
-    for i, slice in enumerate(slices): ax[i] = self.compare_rgb(other, view, slices[i], structure_id, f'Slice {slice}' if label_slices else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, ax[i], plot_legend = (i == len(slices)-1) and plot_legend)
+    for i, slice in enumerate(slices): ax[i] = self.compare_rgb(other, view, slices[i], structure_id, f'Slice {slice}' if label_slices else None if label_images else '', fontsize[0], ms, c, fill_alpha, outline_alpha, flipped, ax[i], plot_legend = (i == len(slices)-1) and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
@@ -247,7 +247,7 @@ class Image(Array3D):
     elif len(np.shape(buffer)) == 1: buffer = [buffer]*3
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
 
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[2*i:2*i+2] = self.compare_hella_slices(other, view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[2*i:2*i+2], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[2*i:2*i+2] = self.compare_hella_slices(other, view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[2*i:2*i+2], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
     if title != None and fig != None: fig.suptitle(title, fontsize = fontsize[1], c = 'w')
     if ax_exists: return ax
     if save != None: plt.savefig(save, dpi = 600, bbox_inches='tight')
@@ -262,7 +262,7 @@ class Image(Array3D):
     if type(fontsize) not in [list, np.ndarray]: fontsize = [fontsize, fontsize]
     if type(label_slices) not in [list, np.ndarray]: label_slices = [label_slices, label_slices]
 
-    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.compare_hella_slices_rgb(other, view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, ax[i], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
+    for i, view in enumerate(['Saggittal', 'Axial', 'Coronal']): ax[i] = self.compare_hella_slices_rgb(other, view, slices, buffer[i], structure_id, None, fontsize, ms, c, fill_alpha, outline_alpha, flipped, ax[i], label_slices = label_slices, label_images=label_images, plot_legend = (i == 0) and plot_legend)
     ax[0][0].set_ylabel('Saggittal', color = 'w', fontsize = fontsize[0])
     ax[1][0].set_ylabel('Axial', color = 'w', fontsize = fontsize[0])
     ax[2][0].set_ylabel('Coronal', color = 'w', fontsize = fontsize[0])

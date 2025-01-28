@@ -67,19 +67,21 @@ class Segmentation(Array3D):
   def get_mask(self):
     return self.array.astype(bool).astype(int)
   
-  def overlay(self, ax, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 120, structure_id = 0, fontsize = 8, color = 'w', ms = 2, fill_alpha = 0.2, outline_alpha = 1, plot_legend = True):
+  def overlay(self, ax, view : Literal['Saggittal', 'Axial', 'Coronal'] = 'Saggittal', slice = 120, structure_id = 0, fontsize = 8, color = 'w', ms = 2, fill_alpha = 0.2, outline_alpha = 1, flipped = False, plot_legend = True):
     if self.isNone: raise Exception('No segmentation supplied')
     picture = self.get_slice(view, slice)
 
     if type(structure_id) not in [list, np.ndarray]: structure_id = [structure_id]
     if type(color) not in [list, np.ndarray]: color = [color]
 
-    for s, c in zip(structure_id, color):
+    for s, c, m, f, o, fl in zip(structure_id, color, ms, fill_alpha, outline_alpha, flipped):
       c = list(to_rgb(c))
-      fill_cmap = LinearSegmentedColormap.from_list('my_cmap', [[0,0,0,0], c+[fill_alpha]], 2)
       fill, x, y = find_structure_and_outline(picture, s)
-      ax[1].plot(x, y, 's', c = c, alpha = outline_alpha, ms = ms, label = lut[s] if s in lut else None)
-      ax[1].imshow(fill, cmap = fill_cmap)
+      ax.plot(x, y, 's', c = c, alpha = o, ms = m, label = lut[s] if s in lut else None)
+      if f > 0:
+        fill_cmap = LinearSegmentedColormap.from_list('my_cmap', [[0,0,0,0], c+[f]], 2)
+        if fl: ax[1].imshow(~fill+2, cmap = fill_cmap, vmin = 0, vmax = 1)
+        else: ax[1].imshow(fill, cmap = fill_cmap, vmin = 0, vmax = 1)
 
     if plot_legend and len(structure_id) != 0: ax[1].legend(labelcolor = 'white', facecolor = 'k', markerscale = 2, loc = 'upper right', fontsize = fontsize)
     structures, counts = np.unique(picture, return_counts=True)
